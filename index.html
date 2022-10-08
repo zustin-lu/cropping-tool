@@ -8,27 +8,40 @@
     <script type="module" src="script.js"></script>
   </head>
   <body>
-    <div>
-      <div class="cropper-render"></div>
-
-      <div class="cropper-container">
-        <div class="cropper-view"></div>
-        <!-- <img
-            class="cropper-mask"
-            src="https://images.unsplash.com/photo-1664745026491-0eefdee30160"
-          /> -->
-        <img
-          class="cropper-mask"
-          src="https://images.unsplash.com/photo-1664819571553-5687b12d1050"
+    <div class="app-container">
+      <div class="editor-area">
+        <input
+          type="text"
+          name="image-source"
+          id="img-source-input"
+          value="https://images.unsplash.com/photo-1664819571553-5687b12d1050"
+          style="width: 100%"
         />
+        <button type="button" id="change-img-btn" style="margin: 12px 0">
+          Change image source
+        </button>
+
+        <div class="cropper-container">
+          <div class="cropper-view"></div>
+          <img class="cropper-mask" />
+        </div>
+
+        <div class="zoom-container">
+          <div class="zoom-line"></div>
+          <div class="zoom-circle"></div>
+        </div>
+
+        <button class="button crop-btn" id="get-crop-data-btn">
+          Crop Image
+        </button>
       </div>
 
-      <div class="zoom-container">
-        <div class="zoom-line"></div>
-        <div class="zoom-circle"></div>
+      <div class="result-area">
+        <div class="cropper-render"></div>
+        <button type="button" id="download-img-btn" style="margin: 12px 0">
+          Download cropped image
+        </button>
       </div>
-
-      <button class="button" id="get-crop-data-btn">Crop Image</button>
     </div>
   </body>
 </html>
