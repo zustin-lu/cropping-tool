@@ -16,7 +16,6 @@ const propAspectRatioInputEl = document.getElementById('prop-asratio-input');
 const propChangeBtnEl = document.getElementById('change-props-btn');
 
 const originalMaskSize = [0, 0];
-const originalTransform = [0, 0];
 
 let croppedImageBase64 = '';
 
@@ -47,39 +46,38 @@ function clampMaskPicturePosition(value, direction) {
   return value;
 }
 
-function fitMaskImageToCropView() {
-  cropViewEl.style.width = propWidthInputEl.value;
-  cropViewEl.style.aspectRatio = propAspectRatioInputEl.value;
+function renderMaskPicture() {
+  renderCropView();
 
-  const isMaskLandscape =
-    maskPictureEl.naturalWidth > maskPictureEl.naturalHeight;
-  const isCropLandscape = cropViewEl.clientWidth > cropViewEl.clientHeight;
-  const widthScaleRatio = cropViewEl.clientWidth / maskPictureEl.naturalWidth;
-  const heightScaleRatio =
-    cropViewEl.clientHeight / maskPictureEl.naturalHeight;
+  const { naturalWidth, naturalHeight } = maskPictureEl;
+  const aspectRatio = naturalWidth / naturalHeight;
+  const widthRatio = cropViewEl.clientWidth / naturalWidth;
+  const heightRatio = cropViewEl.clientHeight / naturalHeight;
 
-  if (
-    (isMaskLandscape && isCropLandscape) ||
-    (!isMaskLandscape && isCropLandscape)
-  ) {
-    maskPictureEl.style.height = 'auto';
-    maskPictureEl.style.width = `${
-      maskPictureEl.naturalWidth * widthScaleRatio
-    }px`;
+  let renderWidth = naturalWidth * widthRatio;
+  let renderHeight = 'auto';
+
+  const estimatedRenderHeight = renderWidth / aspectRatio;
+  if (estimatedRenderHeight < cropViewEl.clientHeight) {
+    renderWidth = 'auto';
+    renderHeight = naturalHeight * heightRatio;
   }
 
-  if (
-    (isMaskLandscape && !isCropLandscape) ||
-    (!isMaskLandscape && !isCropLandscape)
-  ) {
-    maskPictureEl.style.width = 'auto';
-    maskPictureEl.style.height = `${
-      maskPictureEl.naturalHeight * heightScaleRatio
-    }px`;
-  }
+  const parseDimension = (value) => {
+    return typeof value === 'string' ? value : value + 'px';
+  };
+
+  maskPictureEl.style.width = parseDimension(renderWidth);
+  maskPictureEl.style.height = parseDimension(renderHeight);
 
   originalMaskSize[0] = maskPictureEl.clientWidth;
   originalMaskSize[1] = maskPictureEl.clientHeight;
+  Cropper.resetCropper();
+}
+
+function renderCropView() {
+  cropViewEl.style.width = propWidthInputEl.value;
+  cropViewEl.style.aspectRatio = propAspectRatioInputEl.value;
 }
 
 // --- Cropper ---
@@ -93,6 +91,11 @@ function initCropper() {
     lastPositions = [0, 0];
     canMove = false;
     maskPictureEl.style.transform = `translate3d(0, 0, 0)`;
+  }
+
+  function updateLastPositions(x, y) {
+    console.log('updated last position', x, y);
+    lastPositions = [x, y];
   }
 
   function startMove(e) {
@@ -118,8 +121,6 @@ function initCropper() {
       let movedY = lastPositions[1] + (offsetY - startPositions[1]);
       const translateX = clampMaskPicturePosition(movedX, 'x');
       const translateY = clampMaskPicturePosition(movedY, 'y');
-      originalTransform[0] = translateX;
-      originalTransform[1] = translateY;
       maskPictureEl.style.transform = `translate3d(${translateX}px, ${translateY}px, 0)`;
     }
   }
@@ -129,7 +130,7 @@ function initCropper() {
   containerEl.addEventListener('pointerup', cancelMove);
   containerEl.addEventListener('pointerleave', cancelMove);
 
-  return { resetCropper };
+  return { resetCropper, updateLastPositions };
 }
 const Cropper = initCropper();
 
@@ -159,20 +160,13 @@ function zoomMaskPicture(e) {
   const scaledHeight = (originalMaskSize[1] * zoomPercentage) / 100;
   maskPictureEl.style.width = `${originalMaskSize[0] + scaledWidth}px`;
   maskPictureEl.style.height = `${originalMaskSize[1] + scaledHeight}px`;
-  zoomTransform(zoomPercentage);
+  zoomTransform();
 }
 
-function zoomTransform(percentage) {
-  const scaledX = (originalTransform[0] * percentage) / 100;
-  const scaledY = (originalTransform[1] * percentage) / 100;
-  const translateX = clampMaskPicturePosition(
-    originalTransform[0] + scaledX,
-    'x'
-  );
-  const translateY = clampMaskPicturePosition(
-    originalTransform[1] + scaledY,
-    'y'
-  );
+function zoomTransform() {
+  const [x, y] = parseTransformValues(maskPictureEl);
+  const translateX = clampMaskPicturePosition(x, 'x');
+  const translateY = clampMaskPicturePosition(y, 'y');
   maskPictureEl.style.transform = `translate3d(${translateX}px, ${translateY}px, 0)`;
 }
 
@@ -283,5 +277,5 @@ updateMaskPictureSrc();
 cropButtonEl.addEventListener('click', renderCroppedImage);
 imageSrcButtonEl.addEventListener('click', updateMaskPictureSrc);
 downloadButtonEl.addEventListener('click', downloadCroppedImage);
-maskPictureEl.addEventListener('load', fitMaskImageToCropView);
-propChangeBtnEl.addEventListener('click', fitMaskImageToCropView);
+maskPictureEl.addEventListener('load', renderMaskPicture);
+propChangeBtnEl.addEventListener('click', renderMaskPicture);
