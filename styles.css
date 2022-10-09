@@ -39,7 +39,13 @@ input {
   width: 100vw;
   height: 100vh;
   display: grid;
-  grid-template-columns: 500px 1fr;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 975px) {
+  .app-container {
+    grid-template-columns: 500px 1fr;
+  }
 }
 
 .crop-btn {
