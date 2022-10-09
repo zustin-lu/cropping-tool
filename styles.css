@@ -1,3 +1,8 @@
+* {
+  font-family: Arial, Helvetica, sans-serif;
+  color: white;
+}
+
 body {
   display: grid;
   background-color: rgb(32, 38, 48);
@@ -27,6 +32,7 @@ input {
   border: none;
   outline: none;
   box-sizing: border-box;
+  color: rgb(59, 59, 59);
 }
 
 .app-container {
@@ -50,6 +56,21 @@ input {
   justify-content: center;
   align-items: center;
   flex-direction: column;
+}
+
+label span {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.horizontal-label {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.horizontal-label span {
+  margin-right: 12px;
 }
 
 /* ---- Cropper Style ---- */
@@ -86,11 +107,13 @@ input {
   height: 32px;
   width: 80%;
   margin: 16px auto;
+  padding: 12px 0;
   position: relative;
   display: flex;
   align-items: center;
   touch-action: none;
   cursor: pointer;
+  /* background: rgba(255, 255, 255, 0.151); */
 }
 
 .zoom-line {

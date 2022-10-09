@@ -1,7 +1,7 @@
 const containerEl = document.querySelector('.cropper-container');
 const maskPictureEl = document.querySelector('.cropper-mask');
 const cropViewEl = document.querySelector('.cropper-view');
-const renderBoxEl = document.querySelector('.cropper-render');
+const renderAreaEl = document.querySelector('.cropper-render');
 
 const zoomContainerEl = document.querySelector('.zoom-container');
 const zoomCircleEl = document.querySelector('.zoom-circle');
@@ -11,30 +11,26 @@ const imageSrcButtonEl = document.getElementById('change-img-btn');
 const cropButtonEl = document.getElementById('get-crop-data-btn');
 const downloadButtonEl = document.getElementById('download-img-btn');
 
+const propWidthInputEl = document.getElementById('prop-width-input');
+const propAspectRatioInputEl = document.getElementById('prop-asratio-input');
+const propChangeBtnEl = document.getElementById('change-props-btn');
+
 const originalMaskSize = [0, 0];
 const originalTransform = [0, 0];
 
-let downloadHref = '';
-
-const props = {
-  cropWidth: '98%',
-  cropAspectRatio: '16 / 9',
-  // cropHeight: '50px',
-};
+let croppedImageBase64 = '';
 
 // --- Utils ---
 function parseTransformValues(element) {
   const transformValue = element.style.transform;
-  if (!transformValue) {
-    return [0, 0, 0];
-  }
-  const values = transformValue
+  if (!transformValue) return [0, 0, 0];
+  return transformValue
     .replace(/(translate|3d|px|\(|\)|\s)/g, '')
-    .split(',');
-  return values.map((n) => Number(n));
+    .split(',')
+    .map((n) => Number(n));
 }
 
-function getMoveLimit(value, direction) {
+function clampMaskPicturePosition(value, direction) {
   const maskWidth = maskPictureEl.clientWidth;
   const maskHeight = maskPictureEl.clientHeight;
 
@@ -51,14 +47,9 @@ function getMoveLimit(value, direction) {
   return value;
 }
 
-function setupCropImage() {
-  cropViewEl.style.width = props.cropWidth;
-
-  if (props.cropHeight) {
-    cropViewEl.style.height = props.cropHeight;
-  } else {
-    cropViewEl.style.aspectRatio = props.cropAspectRatio;
-  }
+function fitMaskImageToCropView() {
+  cropViewEl.style.width = propWidthInputEl.value;
+  cropViewEl.style.aspectRatio = propAspectRatioInputEl.value;
 
   const isMaskLandscape =
     maskPictureEl.naturalWidth > maskPictureEl.naturalHeight;
@@ -125,8 +116,8 @@ function initCropper() {
     if (canMove) {
       let movedX = lastPositions[0] + (offsetX - startPositions[0]);
       let movedY = lastPositions[1] + (offsetY - startPositions[1]);
-      const translateX = getMoveLimit(movedX, 'x');
-      const translateY = getMoveLimit(movedY, 'y');
+      const translateX = clampMaskPicturePosition(movedX, 'x');
+      const translateY = clampMaskPicturePosition(movedY, 'y');
       originalTransform[0] = translateX;
       originalTransform[1] = translateY;
       maskPictureEl.style.transform = `translate3d(${translateX}px, ${translateY}px, 0)`;
@@ -143,7 +134,7 @@ function initCropper() {
 const Cropper = initCropper();
 
 // --- Zoom handler ---
-function updateZoomAnchorPosition(offsetX) {
+function updateZoomAnchor(offsetX) {
   const circleRadius = zoomCircleEl.clientWidth / 2;
   const containerWidth = zoomContainerEl.clientWidth;
 
@@ -161,39 +152,45 @@ function updateZoomAnchorPosition(offsetX) {
   zoomCircleEl.style.left = `${offsetX - circleRadius}px`;
 }
 
+function zoomMaskPicture(e) {
+  const zoomPercentage = (e.offsetX * 100) / zoomContainerEl.clientWidth;
+  if (zoomPercentage <= 0 || zoomPercentage >= 100) return;
+  const scaledWidth = (originalMaskSize[0] * zoomPercentage) / 100;
+  const scaledHeight = (originalMaskSize[1] * zoomPercentage) / 100;
+  maskPictureEl.style.width = `${originalMaskSize[0] + scaledWidth}px`;
+  maskPictureEl.style.height = `${originalMaskSize[1] + scaledHeight}px`;
+  zoomTransform(zoomPercentage);
+}
+
+function zoomTransform(percentage) {
+  const scaledX = (originalTransform[0] * percentage) / 100;
+  const scaledY = (originalTransform[1] * percentage) / 100;
+  const translateX = clampMaskPicturePosition(
+    originalTransform[0] + scaledX,
+    'x'
+  );
+  const translateY = clampMaskPicturePosition(
+    originalTransform[1] + scaledY,
+    'y'
+  );
+  maskPictureEl.style.transform = `translate3d(${translateX}px, ${translateY}px, 0)`;
+}
+
 function initZoom() {
   let canMove = false;
-
-  function scaleCropPicture(e) {
-    const zoomPercentage = (e.offsetX * 100) / zoomContainerEl.clientWidth;
-    if (zoomPercentage <= 0 || zoomPercentage >= 100) return;
-    const scaledWidth = (originalMaskSize[0] * zoomPercentage) / 100;
-    const scaledHeight = (originalMaskSize[1] * zoomPercentage) / 100;
-    maskPictureEl.style.width = `${originalMaskSize[0] + scaledWidth}px`;
-    maskPictureEl.style.height = `${originalMaskSize[1] + scaledHeight}px`;
-    scaleTransform(zoomPercentage);
-  }
-
-  function scaleTransform(percentage) {
-    const scaledX = (originalTransform[0] * percentage) / 100;
-    const scaledY = (originalTransform[1] * percentage) / 100;
-    const translateX = getMoveLimit(originalTransform[0] + scaledX, 'x');
-    const translateY = getMoveLimit(originalTransform[1] + scaledY, 'y');
-    maskPictureEl.style.transform = `translate3d(${translateX}px, ${translateY}px, 0)`;
-  }
 
   function startMove(e) {
     e.stopPropagation();
     canMove = true;
-    updateZoomAnchorPosition(e.offsetX);
-    scaleCropPicture(e);
+    updateZoomAnchor(e.offsetX);
+    zoomMaskPicture(e);
   }
 
   function onMove(e) {
     e.stopPropagation();
     if (!canMove) return;
-    updateZoomAnchorPosition(e.offsetX);
-    scaleCropPicture(e);
+    updateZoomAnchor(e.offsetX);
+    zoomMaskPicture(e);
   }
 
   function cancelMove(e) {
@@ -215,9 +212,9 @@ function renderCroppedImage() {
   rawImage.src = maskPictureEl.getAttribute('src');
   rawImage.crossOrigin = 'anonymous';
 
-  rawImage.addEventListener('load', function () {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+  function onRawImageLoaded() {
+    const tempCanvas = document.createElement('canvas');
+    const ctx = tempCanvas.getContext('2d');
 
     const { clientWidth, clientHeight } = maskPictureEl;
     const [translatedX, translatedY] = parseTransformValues(maskPictureEl);
@@ -235,8 +232,8 @@ function renderCroppedImage() {
     const drawStartX = centerX - cropWidth / 2 - translatedX;
     const drawStartY = centerY - cropHeight / 2 - translatedY;
 
-    canvas.width = scaledCropWidth;
-    canvas.height = scaledCropHeight;
+    tempCanvas.width = scaledCropWidth;
+    tempCanvas.height = scaledCropHeight;
 
     ctx.drawImage(
       rawImage,
@@ -250,37 +247,41 @@ function renderCroppedImage() {
       scaledCropHeight
     );
 
-    const imageSrc = canvas.toDataURL('image/jpeg');
-    downloadHref = imageSrc;
-    canvas.remove();
+    const base64 = tempCanvas.toDataURL('image/jpeg');
+    croppedImageBase64 = base64;
+    tempCanvas.remove();
 
-    const endImage = new Image(cropWidth, cropHeight);
-    endImage.src = imageSrc;
-    renderBoxEl.innerHTML = '';
-    renderBoxEl.appendChild(endImage);
-  });
+    const croppedImageEl = new Image(cropWidth, cropHeight);
+    croppedImageEl.src = base64;
+    renderAreaEl.innerHTML = '';
+    renderAreaEl.appendChild(croppedImageEl);
+  }
+
+  rawImage.addEventListener('load', onRawImageLoaded);
 }
 
 function downloadCroppedImage() {
-  if (!downloadHref) return;
+  if (!croppedImageBase64) return;
   const tempLink = document.createElement('a');
   const fileName = 'cropped-image';
   tempLink.download = `${fileName}-${Date.now()}.jpg`;
-  tempLink.href = downloadHref;
+  tempLink.href = croppedImageBase64;
   tempLink.click();
+  tempLink.remove();
 }
 
 // --- unrelated parts ---
-function updateCropImageSrc() {
+function updateMaskPictureSrc() {
   const value = imageSrcInputEl.value;
   maskPictureEl.src = value;
-  updateZoomAnchorPosition(0);
+  updateZoomAnchor(0);
   Cropper.resetCropper();
 }
 
-updateCropImageSrc();
+updateMaskPictureSrc();
 
 cropButtonEl.addEventListener('click', renderCroppedImage);
-imageSrcButtonEl.addEventListener('click', updateCropImageSrc);
-maskPictureEl.addEventListener('load', setupCropImage);
+imageSrcButtonEl.addEventListener('click', updateMaskPictureSrc);
 downloadButtonEl.addEventListener('click', downloadCroppedImage);
+maskPictureEl.addEventListener('load', fitMaskImageToCropView);
+propChangeBtnEl.addEventListener('click', fitMaskImageToCropView);

@@ -10,16 +10,38 @@
   <body>
     <div class="app-container">
       <div class="editor-area">
-        <input
-          type="text"
-          name="image-source"
-          id="img-source-input"
-          value="https://images.unsplash.com/photo-1664819571553-5687b12d1050"
-          style="width: 100%"
-        />
+        <label>
+          <span>Unsplash image url</span>
+          <input
+            type="text"
+            name="image-source"
+            id="img-source-input"
+            value="https://images.unsplash.com/photo-1664819571553-5687b12d1050"
+            style="width: 100%"
+          />
+        </label>
         <button type="button" id="change-img-btn" style="margin: 12px 0">
           Change image source
         </button>
+
+        <div>
+          <h4>Cropper props</h4>
+          <label class="horizontal-label">
+            <span>Width (css value)</span>
+            <input type="text" value="98%" id="prop-width-input" />
+          </label>
+          <label class="horizontal-label">
+            <span>Aspect ratio (x / y)</span>
+            <input type="text" value="16 / 9" id="prop-asratio-input" />
+          </label>
+          <button
+            type="button"
+            id="change-props-btn"
+            style="margin-bottom: 12px"
+          >
+            Change props
+          </button>
+        </div>
 
         <div class="cropper-container">
           <div class="cropper-view"></div>
